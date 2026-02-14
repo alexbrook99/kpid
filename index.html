@@ -4,7 +4,7 @@
   <title>Плеер</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background-color: #000; }
+    body { overflow: hidden; background-color: #000; display: none; }
     #player-container { width: 100vw; height: 62vw; max-height: 100vh; z-index: 10; }
     #player-selector { position: absolute; right: 0px; }
     iframe { width: 100%; height: 100%; border: none; }
@@ -27,18 +27,23 @@
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const kpid = urlParams.get('id') || '1167154';
+    const kpid = urlParams.get('id') || '';
 
     const playerSelector = document.getElementById('player-selector');
     const playerIframe = document.getElementById('player-iframe');
+    const body = document.body;
+
+    if (!kpid) return;
+    
+    body.style.display = 'block';
 
     function loadPlayer() {
       const baseUrls = {
-        finve: `//finve-as.stloadi.live/?token=02cf033071b7abcb843a33527aa9d6&kp=${kpid}`,
-        namy: `//api.namy.ws/embed/kp/${kpid}`,
-        // flix: `//player0.flixcdn.space/show/kinopoisk/${kpid}`,
-        turbo: `//api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
-        veoveo: `//ladoni.pro/tvb/${kpid}`,
+        finve: `https://finve-as.stloadi.live/?token=RrfLdf3C0Ib3wT8Fqvzi87tNuQaYbH&kp=${kpid}`,
+        namy: `https://api.namy.ws/embed/kp/${kpid}`,
+        // flix: `https://player0.flixcdn.space/show/kinopoisk/${kpid}`,
+        turbo: `https://api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
+        veoveo: `https://ladoni.pro/tvb/${kpid}`,
       };
 
       const url = baseUrls[playerSelector.value];
