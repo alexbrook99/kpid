@@ -22,39 +22,51 @@
     <option value="cdn">Плеер 5</option>
   </select>
 
-  <div id="player-container">
-    <video-player id="cdnvideohubvideoplayer" data-publisher-id="2058" is-show-banner="false" is-show-voice-only="false" data-aggregator="kp">
-      <iframe id="player-iframe" src="" frameborder="0" allow="fullscreen; autoplay; screen-wake-lock; encrypted-media" allowfullscreen></iframe>
-    </video-player>
-  </div>
+  <div id="player-container"></div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const kpid = urlParams.get('id') || '';
 
-    const playerSelector = document.getElementById('player-selector');
-    const playerIframe = document.getElementById('player-iframe');
-    const videoPlayer = document.getElementById('cdnvideohubvideoplayer');
     const body = document.body;
+    const playerSelector = document.getElementById('player-selector');
+    const playerContainer = document.getElementById('player-container');
+
+    const baseUrls = {
+      finve: `https://finve-as.stloadi.live/?token=RrfLdf3C0Ib3wT8Fqvzi87tNuQaYbH&kp=${kpid}`,
+      namy: `https://api.namy.ws/embed/kp/${kpid}`,
+      // flix: `https://player0.flixcdn.space/show/kinopoisk/${kpid}`,
+      turbo: `https://api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
+      veoveo: `https://ladoni.pro/tvb/${kpid}`,
+      cdn: `https://player.cdnvideohub.com/s2/v2.1.9/frame`
+    };
 
     if (kpid) {
       body.style.display = 'block';
-
+      
       function loadPlayer() {
-        const baseUrls = {
-          finve: `https://finve-as.stloadi.live/?token=RrfLdf3C0Ib3wT8Fqvzi87tNuQaYbH&kp=${kpid}`,
-          namy: `https://api.namy.ws/embed/kp/${kpid}`,
-          // flix: `https://player0.flixcdn.space/show/kinopoisk/${kpid}`,
-          turbo: `https://api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
-          veoveo: `https://ladoni.pro/tvb/${kpid}`,
-          cdn: `https://player.cdnvideohub.com/s2/v2.1.9/frame`
-        };
-
         const url = baseUrls[playerSelector.value];
-        playerIframe.src = url;
+
+        playerContainer.innerHTML = '';
+
+        const iframeElement = document.createElement('iframe');
+        iframeElement.setAttribute('id', 'player-iframe');
+        iframeElement.setAttribute('allow', 'fullscreen; autoplay; screen-wake-lock; encrypted-media');
+        iframeElement.setAttribute('allowfullscreen', 'allowfullscreen');
+        iframeElement.src = url;
 
         if (playerSelector.value === 'cdn') {
+          const videoPlayer = document.createElement('video-player');
+          videoPlayer.setAttribute('id', 'cdnvideohubvideoplayer');
           videoPlayer.setAttribute('data-title-id', kpid);
+          videoPlayer.setAttribute('data-publisher-id', '2058');
+          videoPlayer.setAttribute('is-show-banner', 'false');
+          videoPlayer.setAttribute('is-show-voice-only', 'false');
+          videoPlayer.setAttribute('data-aggregator', 'kp');
+
+          videoPlayer.appendChild(iframeElement);
+
+          playerContainer.appendChild(videoPlayer);
 
           setTimeout(() => {
             const script = document.createElement('script');
@@ -63,7 +75,8 @@
             body.appendChild(script);
           }, 100);
         } else {
-          videoPlayer.removeAttribute('data-title-id');
+          playerContainer.appendChild(iframeElement);
+
           const existingScript = document.querySelector('script[src="https://player.cdnvideohub.com/s2/stable/video-player.umd.js"]');
           if (existingScript) {
             existingScript.remove();
