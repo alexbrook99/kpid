@@ -33,27 +33,26 @@
     const playerIframe = document.getElementById('player-iframe');
     const body = document.body;
 
-    if (!kpid) return;
-    
-    body.style.display = 'block';
+    if (kpid) {
+      body.style.display = 'block';
 
-    function loadPlayer() {
-      const baseUrls = {
-        finve: `https://finve-as.stloadi.live/?token=RrfLdf3C0Ib3wT8Fqvzi87tNuQaYbH&kp=${kpid}`,
-        namy: `https://api.namy.ws/embed/kp/${kpid}`,
-        // flix: `https://player0.flixcdn.space/show/kinopoisk/${kpid}`,
-        turbo: `https://api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
-        veoveo: `https://ladoni.pro/tvb/${kpid}`,
-      };
+      function loadPlayer() {
+        const baseUrls = {
+          finve: `https://finve-as.stloadi.live/?token=RrfLdf3C0Ib3wT8Fqvzi87tNuQaYbH&kp=${kpid}`,
+          namy: `https://api.namy.ws/embed/kp/${kpid}`,
+          // flix: `https://player0.flixcdn.space/show/kinopoisk/${kpid}`,
+          turbo: `https://api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
+          veoveo: `https://ladoni.pro/tvb/${kpid}`,
+        };
 
-      const url = baseUrls[playerSelector.value];
-      playerIframe.src = url;
+        const url = baseUrls[playerSelector.value];
+        playerIframe.src = url;
+      }
+
+      playerSelector.addEventListener('change', loadPlayer);
+
+      loadPlayer();
     }
-
-    playerSelector.addEventListener('change', loadPlayer);
-
-    // Загрузка при загрузке страницы
-    loadPlayer();
   </script>
 </body>
 </html>
