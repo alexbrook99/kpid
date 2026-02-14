@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Плеер</title>
+  <style>
+    #player-container { width: 100vw; height: 62vw; z-index: 10; }
+    #player-selector { position: absolute; right: 0px; }
+    iframe { width: 100%; height: 100%; border: none; }
+    select { display: block; margin: 10px; background-color: #222; color: #fff; padding: 4px 8px; border: none; }
+    select option { background-color: #222; color: #fff; }
+  </style>
+</head>
+<body>
+  <select id="player-selector">
+    <option value="finve">Плеер 1</option>
+    <option value="namy">Плеер 2</option>
+    <!-- <option value="flix">Плеер 3</option> -->
+    <option value="turbo">Плеер 3</option>
+    <option value="veoveo">Плеер 4</option>
+  </select>
+
+  <div id="player-container">
+    <iframe id="player-iframe" width="100%" height="500" frameborder="0" allow="fullscreen" allowfullscreen></iframe>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const kpid = urlParams.get('id') || '1167154';
+
+    const playerSelector = document.getElementById('player-selector');
+    const playerIframe = document.getElementById('player-iframe');
+
+    function loadPlayer() {
+      const baseUrls = {
+        finve: `//finve-as.stloadi.live/?token=02cf033071b7abcb843a33527aa9d6&kp=${kpid}`,
+        namy: `//api.namy.ws/embed/kp/${kpid}`,
+        // flix: `//player0.flixcdn.space/show/kinopoisk/${kpid}`,
+        turbo: `//api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
+        veoveo: `//ladoni.pro/tvb/${kpid}`,
+      };
+
+      const url = baseUrls[playerSelector.value];
+      playerIframe.src = url;
+    }
+
+    playerSelector.addEventListener('change', loadPlayer);
+
+    // Загрузка при загрузке страницы
+    loadPlayer();
+  </script>
+</body>
+</html>
