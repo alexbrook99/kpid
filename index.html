@@ -109,11 +109,11 @@
         return null;
       }
 
+      let lastEmittedSecond = -1;
+
       function allohaPlayerOwnerEvents(event) {
-        console.log('[RAW Iframe Event]', event.data);
         const e = parsePlayerMessage(event);
         if (!e) return;
-
 
         const eventTime =
           e.event === 'timeupdate' ||
@@ -135,13 +135,38 @@
         else if (eventTime) type = 'timeupdate';
 
         if (type !== 'other') {
+          let normalizedTime = null;
+
+          if (type === 'timeupdate') {
+            // Пытаемся безопасно достать время (разные плееры отдают по-разному)
+            const rawTime = e.time !== undefined ? e.time : 
+                           (e.currentTime !== undefined ? e.currentTime : 
+                           (e.data && e.data.time !== undefined ? e.data.time : 
+                           (e.data && e.data.currentTime !== undefined ? e.data.currentTime : null)));
+            
+            if (rawTime !== null) {
+              const currentSecond = Math.floor(rawTime);
+              // Если эта секунда уже была отправлена, прерываем выполнение
+              if (currentSecond === lastEmittedSecond) {
+                return;
+              }
+              lastEmittedSecond = currentSecond;
+              normalizedTime = currentSecond;
+            }
+          } else if (type === 'play' || type === 'pause') {
+            // Сбрасываем счетчик при паузе/стартах (опционально, но полезно при перемотке)
+            lastEmittedSecond = -1;
+          }
+
           const messageForParent = {
             source: 'my-custom-player',
             type: type,
+            // Добавляем очищенное целое время в корень объекта для удобства конечного сайта
+            time: normalizedTime !== null ? normalizedTime : undefined,
             originalEvent: e
           };
           
-          console.log('[Iframe Event] Получено событие от плеера, пересылаем:', type, e);
+          console.log('[Iframe Event] Пересылаем:', type, normalizedTime !== null ? `(${normalizedTime}s)` : '', e);
 
           if (window.parent && window.parent !== window) {
             window.parent.postMessage(messageForParent, '*');
