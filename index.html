@@ -110,8 +110,10 @@
       }
 
       function allohaPlayerOwnerEvents(event) {
+        console.log('[RAW Iframe Event]', event.data);
         const e = parsePlayerMessage(event);
         if (!e) return;
+
 
         const eventTime =
           e.event === 'timeupdate' ||
