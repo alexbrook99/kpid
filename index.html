@@ -26,6 +26,22 @@
   <div id="player-container"></div>
 
   <script>
+    /*
+     * Parent site handler (event.origin = this page origin, not the player):
+     *
+     * window.addEventListener('message', (event) => {
+     *   if (event.origin !== 'https://your-kpid-host.example') return
+     *   const d = event.data
+     *   if (!d || d.source !== 'kpid-player') return
+     *   // d: { source, player, kp, event, currentTime, duration }
+     *   switch (d.event) {
+     *     case 'play': ...
+     *     case 'pause': ...
+     *     case 'timeupdate': ...
+     *   }
+     * })
+     */
+
     const urlParams = new URLSearchParams(window.location.search);
     const kpid = urlParams.get('id') || '';
 
@@ -36,7 +52,6 @@
     const baseUrls = {
       finve: `https://finve-as.stloadi.live/?token=RrfLdf3C0Ib3wT8Fqvzi87tNuQaYbH&kp=${kpid}`,
       collaps: `https://api.namy.ws/embed/kp/${kpid}`,
-      // flix: `https://player0.flixcdn.space/show/kinopoisk/${kpid}`,
       veoveo: `https://api.rstprgapipt.com/balancer-api/iframe?kp=${kpid}`,
       vibex: `https://ladoni.pro/tvb/${kpid}`,
       cdn: `https://player.cdnvideohub.com/s2/v2.1.9/frame`,
@@ -44,13 +59,152 @@
       videoseed: `https://tv-2-kinoserial.net/embed_auto/${kpid}/?token=d19ee7488b710be5056a680751d4c877`
     };
 
+    const PLAYER_ORIGINS = new Set(
+      Object.values(baseUrls)
+        .map((url) => {
+          try {
+            return new URL(url).origin;
+          } catch (_) {
+            return null;
+          }
+        })
+        .filter(Boolean)
+    );
+
+    let currentPlayerId = '';
+    let currentPlayerWindow = null;
+    let messageRelayInitialized = false;
+
+    function parsePlayerMessage(event) {
+      if (!event || typeof event.data === 'undefined' || event.data === null) return null;
+
+      if (typeof event.data === 'string') {
+        try {
+          return JSON.parse(event.data);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      if (typeof event.data === 'object') return event.data;
+
+      return null;
+    }
+
+    function pickNumber() {
+      for (let i = 0; i < arguments.length; i++) {
+        const value = arguments[i];
+        if (typeof value === 'number' && !Number.isNaN(value)) return value;
+      }
+      return null;
+    }
+
+    function normalizePlayerEvent(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+
+      const eventTime =
+        raw.event === 'timeupdate' ||
+        raw.type === 'player:currentTime' ||
+        raw.type === 'player:timeupdate' ||
+        raw.type === 'timeupdate';
+
+      const eventPlay =
+        raw.event === 'play' ||
+        (raw.type === 'player:changeState' && raw.data && raw.data.state === 'playing');
+
+      const eventPause =
+        raw.event === 'pause' ||
+        (raw.type === 'player:changeState' && raw.data && raw.data.state === 'pause');
+
+      let eventName = null;
+      if (eventPlay) eventName = 'play';
+      else if (eventPause) eventName = 'pause';
+      else if (eventTime) eventName = 'timeupdate';
+
+      if (!eventName) return null;
+
+      const data = raw.data && typeof raw.data === 'object' ? raw.data : null;
+
+      return {
+        source: 'kpid-player',
+        player: currentPlayerId,
+        kp: kpid,
+        event: eventName,
+        currentTime: pickNumber(
+          raw.currentTime,
+          data && data.currentTime,
+          data && data.time,
+          raw.time
+        ),
+        duration: pickNumber(raw.duration, data && data.duration)
+      };
+    }
+
+    function getParentOrigin() {
+      const fromQuery = urlParams.get('parentOrigin');
+      if (fromQuery) {
+        try {
+          return new URL(fromQuery).origin;
+        } catch (_) {}
+      }
+
+      if (!document.referrer) return null;
+
+      try {
+        return new URL(document.referrer).origin;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function forwardToParent(normalized) {
+      if (window.parent === window) return;
+
+      const parentOrigin = getParentOrigin();
+      if (!parentOrigin) return;
+
+      window.parent.postMessage(normalized, parentOrigin);
+    }
+
+    function isAllowedPlayerOrigin(origin) {
+      return PLAYER_ORIGINS.has(origin);
+    }
+
+    function onPlayerMessage(event) {
+      if (!isAllowedPlayerOrigin(event.origin)) return;
+
+      if (currentPlayerWindow && event.source !== currentPlayerWindow) return;
+
+      const raw = parsePlayerMessage(event);
+      if (!raw) return;
+
+      const normalized = normalizePlayerEvent(raw);
+      if (!normalized) return;
+
+      forwardToParent(normalized);
+    }
+
+    function initMessageRelay() {
+      if (messageRelayInitialized) return;
+      messageRelayInitialized = true;
+      window.addEventListener('message', onPlayerMessage);
+    }
+
+    function setCurrentPlayerContext(playerId, iframeElement) {
+      currentPlayerId = playerId;
+      currentPlayerWindow = iframeElement ? iframeElement.contentWindow : null;
+    }
+
     if (kpid) {
       body.style.display = 'block';
-      
+      initMessageRelay();
+
       function loadPlayer() {
-        const url = baseUrls[playerSelector.value];
+        const playerId = playerSelector.value;
+        const url = baseUrls[playerId];
 
         playerContainer.innerHTML = '';
+        currentPlayerWindow = null;
 
         const iframeElement = document.createElement('iframe');
         iframeElement.setAttribute('id', 'player-iframe');
@@ -58,7 +212,7 @@
         iframeElement.setAttribute('allowfullscreen', 'allowfullscreen');
         iframeElement.src = url;
 
-        if (playerSelector.value === 'cdn') {
+        if (playerId === 'cdn') {
           const videoPlayer = document.createElement('video-player');
           videoPlayer.setAttribute('id', 'cdnvideohubvideoplayer');
           videoPlayer.setAttribute('data-title-id', kpid);
@@ -68,27 +222,26 @@
           videoPlayer.setAttribute('data-aggregator', 'kp');
 
           videoPlayer.appendChild(iframeElement);
-
           playerContainer.appendChild(videoPlayer);
 
           setTimeout(() => {
             const script = document.createElement('script');
-            script.src = "https://player.cdnvideohub.com/s2/stable/video-player.umd.js";
-
+            script.src = 'https://player.cdnvideohub.com/s2/stable/video-player.umd.js';
             body.appendChild(script);
           }, 100);
         } else {
           playerContainer.appendChild(iframeElement);
 
-          const existingScript = document.querySelector('script[src="https://player.cdnvideohub.com/s2/stable/video-player.umd.js"]');
-          if (existingScript) {
-            existingScript.remove();
-          }
+          const existingScript = document.querySelector(
+            'script[src="https://player.cdnvideohub.com/s2/stable/video-player.umd.js"]'
+          );
+          if (existingScript) existingScript.remove();
         }
+
+        setCurrentPlayerContext(playerId, iframeElement);
       }
 
       playerSelector.addEventListener('change', loadPlayer);
-
       loadPlayer();
     }
   </script>
