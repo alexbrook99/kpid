@@ -110,6 +110,7 @@
       }
 
       let lastEmittedSecond = -1;
+      const DEBUG_EVENTS = false; // Переключатель логов в консоль
 
       function allohaPlayerOwnerEvents(event) {
         const e = parsePlayerMessage(event);
@@ -165,8 +166,9 @@
             time: normalizedTime !== null ? normalizedTime : undefined,
             originalEvent: e
           };
-          
-          console.log('[Iframe Event] Пересылаем:', type, normalizedTime !== null ? `(${normalizedTime}s)` : '', e);
+          if (DEBUG_EVENTS) {
+            console.log('[Iframe Event] Пересылаем:', type, normalizedTime !== null ? `(${normalizedTime}s)` : '', e);
+          }
 
           if (window.parent && window.parent !== window) {
             window.parent.postMessage(messageForParent, '*');
